@@ -1,23 +1,30 @@
 <!doctype html>
 <meta charset="utf-8">
 <title>Auth Callback</title>
-<style>body{font-family:system-ui,Segoe UI,Arial;margin:32px}</style>
+<style>
+  body { font-family: system-ui, Segoe UI, Arial; margin: 40px; line-height: 1.4; }
+</style>
 <h1>Авторизация…</h1>
-<p>Если переадресация не произошла автоматически, <a id="link" href="#">нажми здесь</a>.</p>
+<p>Если автоматическое перенаправление не сработало, <a id="link" href="#">нажмите здесь</a>.</p>
+
 <script>
 (function () {
-  const p = new URLSearchParams(location.search);
-  const code  = p.get('code');
-  const state = p.get('state') || '';
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get("code");
+  const state = params.get("state") || "";
+
   if (!code) {
-    document.body.insertAdjacentHTML('beforeend','<p>Нет параметра <code>code</code>.</p>');
+    document.body.insertAdjacentHTML("beforeend", "<p>❌ Нет параметра <code>code</code>.</p>");
     return;
   }
-  // Перекидываем код в локальное десктоп-приложение
-  const target = 'http://localhost:51789/?code=' + encodeURIComponent(code) +
-                 (state ? '&state=' + encodeURIComponent(state) : '');
-  document.getElementById('link').href = target;
-  // Мягкий redirect (замена истории, чтобы не оставить "секрет" в истории)
-  location.replace(target);
+
+  // Перенаправляем на локальный сервер
+  const target = "http://127.0.0.1:51789/?code=" + encodeURIComponent(code) +
+                 (state ? "&state=" + encodeURIComponent(state) : "");
+
+  document.getElementById("link").href = target;
+
+  // Мгновенное перенаправление
+  window.location.replace(target);
 })();
 </script>
