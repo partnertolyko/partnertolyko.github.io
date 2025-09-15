@@ -1,4 +1,4 @@
-name: Deploy GitHub Pages
+name: GitHub Pages
 
 on:
   push:
@@ -27,7 +27,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v2
         with:
-          path: .  # все html-файлы в корне
+          path: .  # index.html, privacy.html, terms.html и др.
 
   deploy:
     environment:
