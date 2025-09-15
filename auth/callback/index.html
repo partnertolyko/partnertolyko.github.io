@@ -1,30 +1,50 @@
 <!doctype html>
-<meta charset="utf-8">
-<title>Auth Callback</title>
-<style>
-  body { font-family: system-ui, Segoe UI, Arial; margin: 40px; line-height: 1.4; }
-</style>
-<h1>Авторизация…</h1>
-<p>Если автоматическое перенаправление не сработало, <a id="link" href="#">нажмите здесь</a>.</p>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Auth Callback</title>
+  <style>
+    body {
+      font-family: system-ui, Segoe UI, Arial;
+      margin: 40px;
+      line-height: 1.4;
+    }
+    code {
+      background: #eee;
+      padding: 2px 4px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Авторизация завершена</h1>
+  <div id="result"></div>
+  <p>Скопируйте код и вставьте его в приложение.</p>
 
-<script>
-(function () {
-  const params = new URLSearchParams(window.location.search);
-  const code = params.get("code");
-  const state = params.get("state") || "";
+  <script>
+    (function () {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get("code");
+      const state = params.get("state") || "";
 
-  if (!code) {
-    document.body.insertAdjacentHTML("beforeend", "<p>❌ Нет параметра <code>code</code>.</p>");
-    return;
-  }
+      if (!code) {
+        document.getElementById("result").innerHTML =
+          "<p style='color:red'>❌ Нет параметра <code>code</code>.</p>";
+        return;
+      }
 
-  // Перенаправляем на локальный сервер
-  const target = "http://127.0.0.1:51789/?code=" + encodeURIComponent(code) +
-                 (state ? "&state=" + encodeURIComponent(state) : "");
+      // Показать пользователю код
+      document.getElementById("result").innerHTML =
+        "<p>Ваш код авторизации: <code>" + code + "</code></p>" +
+        "<p>State: <code>" + state + "</code></p>";
 
-  document.getElementById("link").href = target;
-
-  // Мгновенное перенаправление
-  window.location.replace(target);
-})();
-</script>
+      // Скопировать в буфер обмена
+      navigator.clipboard.writeText(code).then(() => {
+        const note = document.createElement("p");
+        note.textContent = "✅ Код скопирован в буфер обмена.";
+        document.body.appendChild(note);
+      });
+    })();
+  </script>
+</body>
+</html>
