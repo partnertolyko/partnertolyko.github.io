@@ -1,49 +1,128 @@
 <!doctype html>
-<html lang="ru">
+<html lang="ru" referrerpolicy="no-referrer">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Auth Callback</title>
   <style>
-    body {
-      font-family: system-ui, Segoe UI, Arial;
-      margin: 40px;
-      line-height: 1.4;
-    }
-    code {
-      background: #eee;
-      padding: 2px 4px;
-      border-radius: 4px;
-    }
+    :root { color-scheme: light dark; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 40px; line-height: 1.5; }
+    h1 { margin: 0 0 12px; }
+    .box { background: #f6f6f6; padding: 14px 16px; border-radius: 10px; margin: 16px 0; }
+    code { background: #eee; padding: 2px 6px; border-radius: 6px; }
+    .ok { color: #1b7f3b; }
+    .err { color: #c62828; }
+    .row { margin: 6px 0; }
+    button { padding: 8px 12px; border-radius: 8px; border: 1px solid #ccc; cursor: pointer; }
+    .muted { opacity: .7; font-size: .95em; }
   </style>
+  <meta name="referrer" content="no-referrer">
 </head>
 <body>
-  <h1>Авторизация завершена</h1>
-  <div id="result"></div>
-  <p>Скопируйте код и вставьте его в приложение.</p>
+  <h1 id="title">Авторизация</h1>
+
+  <div id="panel" class="box">
+    <div class="row" id="msg"></div>
+    <div class="row" id="pairs" hidden>
+      <div>Код: <code id="c"></code></div>
+      <div>State: <code id="s"></code></div>
+    </div>
+
+    <div class="row" id="actions" hidden>
+      <button id="copy">Скопировать код</button>
+      <button id="hide">Скрыть код из адресной строки</button>
+      <button id="close">Закрыть вкладку</button>
+    </div>
+  </div>
+
+  <p class="muted">Эта страница ничего никуда не отправляет — код отображается только здесь, чтобы вы вставили его в приложение.</p>
 
   <script>
     (function () {
-      const params = new URLSearchParams(window.location.search);
-      const code = params.get("code");
-      const state = params.get("state") || "";
+      // Хелпер для безопасного текста
+      const esc = (s) => (s ?? "").toString()
+        .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 
-      if (!code) {
-        document.getElementById("result").innerHTML =
-          "<p style='color:red'>❌ Нет параметра <code>code</code>.</p>";
+      const qs = new URLSearchParams(location.search);
+      const code  = qs.get("code");
+      const state = qs.get("state") || "";
+      const err   = qs.get("error");
+      const errd  = qs.get("error_description");
+
+      const $ = (id) => document.getElementById(id);
+      const title   = $("title");
+      const msg     = $("msg");
+      const pairs   = $("pairs");
+      const actions = $("actions");
+      const codeEl  = $("c");
+      const stateEl = $("s");
+
+      function setStatus(ok, html) {
+        $("title").innerText = ok ? "Авторизация завершена" : "Ошибка авторизации";
+        $("title"); // to avoid unused warning
+        $("title"); // noop
+        document.querySelector("h1").innerText = ok ? "Авторизация завершена" : "Ошибка авторизации";
+        msg.innerHTML = html;
+      }
+
+      async function copyToClipboard(text) {
+        try {
+          if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+            return true;
+          }
+        } catch (_) {}
+        // Фолбэк через временной input
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand("copy"); } catch (_) { /* ignore */ }
+        document.body.removeChild(ta);
+        return true;
+      }
+
+      function hideQuery() {
+        if (history && history.replaceState) {
+          history.replaceState({}, "", location.pathname);
+        }
+      }
+
+      // Ошибки от OAuth (если есть)
+      if (err) {
+        setStatus(false,
+          "<p class='err'>❌ Ошибка: <code>" + esc(err) + "</code></p>" +
+          (errd ? "<p class='err'>Описание: <code>" + esc(errd) + "</code></p>" : "")
+        );
         return;
       }
 
-      // Показать пользователю код
-      document.getElementById("result").innerHTML =
-        "<p>Ваш код авторизации: <code>" + code + "</code></p>" +
-        "<p>State: <code>" + state + "</code></p>";
+      if (!code) {
+        setStatus(false, "<p class='err'>❌ В ответе нет параметра <code>code</code>.</p>");
+        return;
+      }
 
-      // Скопировать в буфер обмена
-      navigator.clipboard.writeText(code).then(() => {
+      // Успех
+      setStatus(true, "<p class='ok'>✅ Получен код авторизации. Скопируйте его и вставьте в приложение.</p>");
+      codeEl.textContent  = code;
+      stateEl.textContent = state;
+      pairs.hidden = false;
+      actions.hidden = false;
+
+      // Автокопирование, потом скрыть в URL
+      copyToClipboard(code).then(() => {
         const note = document.createElement("p");
-        note.textContent = "✅ Код скопирован в буфер обмена.";
-        document.body.appendChild(note);
-      });
+        note.className = "ok";
+        note.textContent = "Код скопирован в буфер обмена.";
+        document.getElementById("panel").appendChild(note);
+      }).finally(hideQuery);
+
+      // Кнопки
+      $("copy").onclick = () => copyToClipboard(code);
+      $("hide").onclick = hideQuery;
+      $("close").onclick = () => window.close();
     })();
   </script>
 </body>
