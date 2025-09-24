@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru" referrerpolicy="no-referrer">
+<html lang="ru">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -16,30 +16,18 @@
     button { padding: 8px 12px; border-radius: 8px; border: 1px solid #ccc; cursor: pointer; }
     .muted { opacity: .7; font-size: .95em; }
   </style>
-  <meta name="referrer" content="no-referrer">
 </head>
 <body>
   <h1 id="title">Авторизация</h1>
 
   <div id="panel" class="box">
-    <div class="row" id="msg"></div>
-    <div class="row" id="pairs" hidden>
-      <div>Код: <code id="c"></code></div>
-      <div>State: <code id="s"></code></div>
-    </div>
-
-    <div class="row" id="actions" hidden>
-      <button id="copyCode">Скопировать только код</button>
-      <button id="copyUrl">Скопировать полный URL</button>
-      <button id="hide">Скрыть параметры</button>
-      <button id="close">Закрыть вкладку</button>
-    </div>
+    <div class="row" id="msg">⏳ Обрабатываем авторизацию...</div>
   </div>
 
-  <p class="muted">Эта страница ничего никуда не отправляет — данные отображаются только здесь для вставки в приложение.</p>
+  <p class="muted">Эта страница автоматически передаст код в приложение на вашем компьютере.</p>
 
   <script>
-    (function () {
+    (async function () {
       const esc = (s) => (s ?? "").toString()
         .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 
@@ -49,76 +37,35 @@
       const err   = qs.get("error");
       const errd  = qs.get("error_description");
 
-      const $ = (id) => document.getElementById(id);
-      const msg     = $("msg");
-      const pairs   = $("pairs");
-      const actions = $("actions");
-      const codeEl  = $("c");
-      const stateEl = $("s");
+      const msg   = document.getElementById("msg");
+      const title = document.getElementById("title");
 
       function setStatus(ok, html) {
         document.title = ok ? "Авторизация завершена" : "Ошибка авторизации";
-        document.querySelector("h1").innerText = ok ? "Авторизация завершена" : "Ошибка авторизации";
+        title.innerText = ok ? "Авторизация завершена" : "Ошибка авторизации";
         msg.innerHTML = html;
-      }
-
-      async function copyToClipboard(text) {
-        try {
-          if (navigator.clipboard && window.isSecureContext) {
-            await navigator.clipboard.writeText(text);
-            return true;
-          }
-        } catch (_) {}
-        const ta = document.createElement("textarea");
-        ta.value = text;
-        ta.style.position = "fixed";
-        ta.style.opacity = "0";
-        document.body.appendChild(ta);
-        ta.select();
-        try { document.execCommand("copy"); } catch (_) {}
-        document.body.removeChild(ta);
-        return true;
-      }
-
-      function hideQuery() {
-        if (history && history.replaceState) {
-          history.replaceState({}, "", location.pathname);
-        }
       }
 
       if (err) {
         setStatus(false,
-          "<p class='err'>❌ Ошибка: <code>" + esc(err) + "</code></p>" +
-          (errd ? "<p class='err'>Описание: <code>" + esc(errd) + "</code></p>" : "")
+          "❌ Ошибка: <code>" + esc(err) + "</code>" +
+          (errd ? "<br>Описание: <code>" + esc(errd) + "</code>" : "")
         );
         return;
       }
 
       if (!code) {
-        setStatus(false, "<p class='err'>❌ В ответе нет параметра <code>code</code>.</p>");
+        setStatus(false, "❌ В ответе нет параметра <code>code</code>.");
         return;
       }
 
-      // Успех
-      setStatus(true, "<p class='ok'>✅ Получен код авторизации. Полный URL скопирован в буфер обмена.</p>");
-      codeEl.textContent  = code;
-      stateEl.textContent = state;
-      pairs.hidden = false;
-      actions.hidden = false;
-
-      // Автокопирование полного URL
-      copyToClipboard(window.location.href).then(() => {
-        const note = document.createElement("p");
-        note.className = "ok";
-        note.textContent = "Полный URL скопирован в буфер обмена.";
-        document.getElementById("panel").appendChild(note);
-      }).finally(hideQuery);
-
-      // Кнопки
-      $("copyCode").onclick = () => copyToClipboard(code);
-      $("copyUrl").onclick  = () => copyToClipboard(window.location.href);
-      $("hide").onclick     = hideQuery;
-      $("close").onclick    = () => window.close();
+      try {
+        // Отправляем code в локальное приложение
+        await fetch("http://localhost:8080/callback?code=" + encodeURIComponent(code) + "&state=" + encodeURIComponent(state));
+        setStatus(true, "✅ Код успешно передан в приложение. Можете закрыть вкладку.");
+      } catch (e) {
+        setStatus(false, "❌ Не удалось связаться с приложением.<br>Убедитесь, что оно запущено.");
+      }
     })();
   </script>
 </body>
