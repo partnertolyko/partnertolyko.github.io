@@ -4,125 +4,39 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Auth Callback</title>
-  <style>
-    :root { color-scheme: light dark; }
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 40px; line-height: 1.5; }
-    h1 { margin: 0 0 12px; }
-    .box { background: #f6f6f6; padding: 14px 16px; border-radius: 10px; margin: 16px 0; }
-    code { background: #eee; padding: 2px 6px; border-radius: 6px; }
-    .ok { color: #1b7f3b; }
-    .err { color: #c62828; }
-    .row { margin: 6px 0; }
-    button { padding: 8px 12px; border-radius: 8px; border: 1px solid #ccc; cursor: pointer; }
-    .muted { opacity: .7; font-size: .95em; }
-  </style>
-  <meta name="referrer" content="no-referrer">
 </head>
 <body>
-  <h1 id="title">Авторизация</h1>
-
-  <div id="panel" class="box">
-    <div class="row" id="msg"></div>
-    <div class="row" id="pairs" hidden>
-      <div>Код: <code id="c"></code></div>
-      <div>State: <code id="s"></code></div>
-    </div>
-
-    <div class="row" id="actions" hidden>
-      <button id="copyCode">Скопировать только код</button>
-      <button id="copyUrl">Скопировать полный URL</button>
-      <button id="hide">Скрыть параметры</button>
-      <button id="close">Закрыть вкладку</button>
-    </div>
-  </div>
-
-  <p class="muted">Эта страница ничего никуда не отправляет — данные отображаются только здесь для вставки в приложение.</p>
+  <h1 id="status">Ожидание авторизации...</h1>
+  <pre id="log"></pre>
 
   <script>
-    (function () {
-      const esc = (s) => (s ?? "").toString()
-        .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-
+    (async function() {
       const qs = new URLSearchParams(location.search);
-      const code  = qs.get("code");
-      const state = qs.get("state") || "";
-      const err   = qs.get("error");
-      const errd  = qs.get("error_description");
-
-      const $ = (id) => document.getElementById(id);
-      const msg     = $("msg");
-      const pairs   = $("pairs");
-      const actions = $("actions");
-      const codeEl  = $("c");
-      const stateEl = $("s");
-
-      function setStatus(ok, html) {
-        document.title = ok ? "Авторизация завершена" : "Ошибка авторизации";
-        document.querySelector("h1").innerText = ok ? "Авторизация завершена" : "Ошибка авторизации";
-        msg.innerHTML = html;
-      }
-
-      async function copyToClipboard(text) {
-        try {
-          if (navigator.clipboard && window.isSecureContext) {
-            await navigator.clipboard.writeText(text);
-            return true;
-          }
-        } catch (_) {}
-        const ta = document.createElement("textarea");
-        ta.value = text;
-        ta.style.position = "fixed";
-        ta.style.opacity = "0";
-        document.body.appendChild(ta);
-        ta.select();
-        try { document.execCommand("copy"); } catch (_) {}
-        document.body.removeChild(ta);
-        return true;
-      }
-
-      function hideQuery() {
-        if (history && history.replaceState) {
-          history.replaceState({}, "", location.pathname);
-        }
-      }
-
-      if (err) {
-        setStatus(false,
-          "<p class='err'>❌ Ошибка: <code>" + esc(err) + "</code></p>" +
-          (errd ? "<p class='err'>Описание: <code>" + esc(errd) + "</code></p>" : "")
-        );
-        return;
-      }
+      const code = qs.get("code");
+      const log = document.getElementById("log");
+      const status = document.getElementById("status");
 
       if (!code) {
-        setStatus(false, "<p class='err'>❌ В ответе нет параметра <code>code</code>.</p>");
+        status.textContent = "❌ Ошибка: параметр code не найден.";
         return;
       }
 
-      // Успех
-      setStatus(true, "<p class='ok'>✅ Получен код авторизации. Полный URL скопирован в буфер обмена.</p>");
-      codeEl.textContent  = code;
-      stateEl.textContent = state;
-      pairs.hidden = false;
-      actions.hidden = false;
+      status.textContent = "✅ Код получен, отправляем в приложение...";
+      log.textContent = "code=" + code;
 
-      // Автокопирование полного URL
-      copyToClipboard(window.location.href).then(() => {
-        const note = document.createElement("p");
-        note.className = "ok";
-        note.textContent = "Полный URL скопирован в буфер обмена.";
-        document.getElementById("panel").appendChild(note);
-      }).finally(hideQuery);
-
-      // 🚀 Автопередача кода в локальный сервер
-      fetch("http://localhost:8080/callback?code=" + encodeURIComponent(code))
-        .catch(err => console.error("Не удалось отправить код в локальный сервер:", err));
-
-      // Кнопки
-      $("copyCode").onclick = () => copyToClipboard(code);
-      $("copyUrl").onclick  = () => copyToClipboard(window.location.href);
-      $("hide").onclick     = hideQuery;
-      $("close").onclick    = () => window.close();
+      try {
+        // запрос в локальное приложение
+        const resp = await fetch("http://localhost:8080/callback?code=" + encodeURIComponent(code));
+        if (resp.ok) {
+          status.textContent = "✅ Код успешно передан приложению. Можно закрыть вкладку.";
+        } else {
+          status.textContent = "⚠️ Код получен, но приложение не ответило корректно.";
+        }
+      } catch (e) {
+        status.textContent = "⚠️ Код есть, но не удалось связаться с приложением.\n" +
+                             "Оно должно слушать http://localhost:8080/callback";
+        console.error(e);
+      }
     })();
   </script>
 </body>
