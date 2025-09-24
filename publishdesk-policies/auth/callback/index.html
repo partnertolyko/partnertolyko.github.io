@@ -4,6 +4,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Auth Callback</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      margin: 40px;
+      line-height: 1.5;
+    }
+    h1 { margin-bottom: 20px; }
+    pre { background: #f6f6f6; padding: 12px; border-radius: 6px; }
+    .ok { color: #1b7f3b; }
+    .err { color: #c62828; }
+  </style>
 </head>
 <body>
   <h1 id="status">Ожидание авторизации...</h1>
@@ -13,11 +24,17 @@
     (async function() {
       const qs = new URLSearchParams(location.search);
       const code = qs.get("code");
+      const error = qs.get("error");
       const log = document.getElementById("log");
       const status = document.getElementById("status");
 
+      if (error) {
+        status.textContent = "❌ Ошибка авторизации: " + error;
+        return;
+      }
+
       if (!code) {
-        status.textContent = "❌ Ошибка: параметр code не найден.";
+        status.textContent = "❌ Параметр code не найден.";
         return;
       }
 
@@ -25,16 +42,18 @@
       log.textContent = "code=" + code;
 
       try {
-        // запрос в локальное приложение
         const resp = await fetch("http://localhost:8080/callback?code=" + encodeURIComponent(code));
         if (resp.ok) {
+          status.className = "ok";
           status.textContent = "✅ Код успешно передан приложению. Можно закрыть вкладку.";
         } else {
-          status.textContent = "⚠️ Код получен, но приложение не ответило корректно.";
+          status.className = "err";
+          status.textContent = "⚠️ Код получен, но приложение не приняло его (ошибка ответа).";
         }
       } catch (e) {
-        status.textContent = "⚠️ Код есть, но не удалось связаться с приложением.\n" +
-                             "Оно должно слушать http://localhost:8080/callback";
+        status.className = "err";
+        status.textContent = "⚠️ Код получен, но не удалось связаться с приложением.\n" +
+                             "Убедись, что приложение запущено и слушает http://localhost:8080/callback";
         console.error(e);
       }
     })();
