@@ -13,13 +13,22 @@
     .ok { color: #1b7f3b; }
     .err { color: #c62828; }
     .row { margin: 6px 0; }
+    .muted { opacity: .7; font-size: .95em; }
   </style>
+  <meta name="referrer" content="no-referrer">
 </head>
 <body>
   <h1 id="title">Авторизация</h1>
+
   <div id="panel" class="box">
-    <div id="msg"></div>
+    <div class="row" id="msg"></div>
+    <div class="row" id="pairs" hidden>
+      <div>Код: <code id="c"></code></div>
+      <div>State: <code id="s"></code></div>
+    </div>
   </div>
+
+  <p class="muted">Эта страница показывает код и одновременно пересылает его в локальное приложение.</p>
 
   <script>
     (function () {
@@ -28,31 +37,38 @@
       const state = qs.get("state") || "";
       const err   = qs.get("error");
       const errd  = qs.get("error_description");
+
       const msg   = document.getElementById("msg");
+      const codeEl  = document.getElementById("c");
+      const stateEl = document.getElementById("s");
+      const pairs   = document.getElementById("pairs");
+
+      function setStatus(ok, html) {
+        document.title = ok ? "Авторизация завершена" : "Ошибка авторизации";
+        document.querySelector("h1").innerText = ok ? "Авторизация завершена" : "Ошибка авторизации";
+        msg.innerHTML = html;
+      }
 
       if (err) {
-        document.title = "Ошибка авторизации";
-        msg.innerHTML = `<p class='err'>❌ Ошибка: <code>${err}</code></p><p>${errd || ""}</p>`;
+        setStatus(false, "<p class='err'>❌ Ошибка: " + err + "</p><p>" + (errd||"") + "</p>");
         return;
       }
 
       if (!code) {
-        document.title = "Ошибка";
-        msg.innerHTML = "<p class='err'>❌ В ответе нет параметра <code>code</code>.</p>";
+        setStatus(false, "<p class='err'>❌ Нет параметра code.</p>");
         return;
       }
 
-      document.title = "Авторизация завершена";
-      msg.innerHTML = "<p class='ok'>✅ Код авторизации получен. Идёт передача в приложение...</p>";
+      // Показываем код
+      setStatus(true, "<p class='ok'>✅ Код получен и отправлен в приложение.</p>");
+      codeEl.textContent  = code;
+      stateEl.textContent = state;
+      pairs.hidden = false;
 
-      // 🔑 Автоматическая пересылка в локальное приложение
-      fetch("http://localhost:8080/callback?code=" + encodeURIComponent(code) + "&state=" + encodeURIComponent(state))
-        .then(() => {
-          msg.innerHTML += "<p class='ok'>✅ Код успешно отправлен в приложение. Можно закрыть вкладку.</p>";
-        })
-        .catch(() => {
-          msg.innerHTML += "<p class='err'>⚠ Не удалось связаться с приложением. Возможно, оно не запущено.</p>";
-        });
+      // Автоматическая пересылка кода в локальное приложение
+      fetch("http://localhost:8080/callback?code=" + encodeURIComponent(code))
+        .then(() => console.log("✔ Код переслан в локальное приложение"))
+        .catch(() => console.warn("⚠ Не удалось связаться с localhost:8080"));
     })();
   </script>
 </body>
