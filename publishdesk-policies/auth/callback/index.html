@@ -31,7 +31,7 @@
     <div class="row" id="actions" hidden>
       <button id="copyCode">Скопировать только код</button>
       <button id="copyUrl">Скопировать полный URL</button>
-      <button id="hide">Скрыть код из адресной строки</button>
+      <button id="hide">Скрыть параметры</button>
       <button id="close">Закрыть вкладку</button>
     </div>
   </div>
@@ -100,7 +100,7 @@
       }
 
       // Успех
-      setStatus(true, "<p class='ok'>✅ Получен код авторизации. Данные скопированы в буфер обмена.</p>");
+      setStatus(true, "<p class='ok'>✅ Получен код авторизации. Полный URL скопирован в буфер обмена.</p>");
       codeEl.textContent  = code;
       stateEl.textContent = state;
       pairs.hidden = false;
