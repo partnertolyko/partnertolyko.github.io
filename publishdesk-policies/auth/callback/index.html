@@ -17,7 +17,6 @@
 </head>
 <body>
   <h1 id="title">Авторизация</h1>
-
   <div id="panel" class="box">
     <div id="msg"></div>
   </div>
@@ -29,8 +28,7 @@
       const state = qs.get("state") || "";
       const err   = qs.get("error");
       const errd  = qs.get("error_description");
-
-      const msg = document.getElementById("msg");
+      const msg   = document.getElementById("msg");
 
       if (err) {
         document.title = "Ошибка авторизации";
